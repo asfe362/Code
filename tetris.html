@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块 - Tetris</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            padding: 20px;
+        }
+
+        /* 登录/注册界面样式 */
+        .auth-container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px 50px;
+            border-radius: 20px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            text-align: center;
+            width: 400px;
+        }
+
+        .auth-container h1 {
+            color: #fff;
+            font-size: 42px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00d4ff;
+        }
+
+        .auth-container h2 {
+            color: #ccc;
+            font-size: 24px;
+            margin-bottom: 30px;
+            font-weight: normal;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 2px solid #888;
+            border-radius: 8px;
+            background: #222;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #00d4ff;
+        }
+
+        .input-group input.active {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .password-toggle {
+            color: #64c8ff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00a86b 0%, #00c853 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 200, 83, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .instructions {
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+            line-height: 1.8;
+        }
+
+        /* 难度选择界面 */
+        .difficulty-container {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            text-align: center;
+        }
+
+        .difficulty-container h1 {
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .difficulty-container .username-display {
+            color: #00d4ff;
+            font-size: 20px;
+            margin-bottom: 30px;
+            cursor: pointer;
+            padding: 5px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .difficulty-container .username-display:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .difficulty-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .difficulty-btn {
+            padding: 18px 60px;
+            font-size: 20px;
+            border: 2px solid;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .diff-easy {
+            background: rgba(0, 255, 0, 0.2);
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        .diff-easy:hover {
+            background: rgba(0, 255, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        .diff-medium {
+            background: rgba(255, 255, 0, 0.2);
+            border-color: #ffff00;
+            color: #ffff00;
+        }
+
+        .diff-medium:hover {
+            background: rgba(255, 255, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        .diff-hard {
+            background: rgba(255, 165, 0, 0.2);
+            border-color: #ffa500;
+            color: #ffa500;
+        }
+
+        .diff-hard:hover {
+            background: rgba(255, 165, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        .diff-insane {
+            background: rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+
+        .diff-insane:hover {
+            background: rgba(255, 0, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* 用户信息编辑界面 */
+        .userinfo-container {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px 50px;
+            border-radius: 20px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            text-align: center;
+            width: 400px;
+        }
+
+        .userinfo-container h2 {
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        /* 游戏主界面 */
+        .game-container {
+            display: none;
+            gap: 30px;
+        }
+
+        .game-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid #00d4ff;
+            color: #fff;
+        }
+
+        .info-box h3 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: normal;
+        }
+
+        .info-box .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        #nextPiece {
+            display: block;
+        }
+
+        .music-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: linear-gradient(135deg, #00a86b 0%, #00c853 100%);
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .music-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
+        }
+
+        .music-btn.playing {
+            background: linear-gradient(135deg, #ff5722 0%, #ff9800 100%);
+        }
+
+        .username-btn {
+            background: transparent;
+            border: none;
+            color: #00d4ff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            text-decoration: underline;
+        }
+
+        .game-controls {
+            margin-top: 20px;
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .game-controls span {
+            display: block;
+            margin: 5px 0;
+        }
+
+        canvas {
+            border: 3px solid #00d4ff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+        }
+
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .game-over-overlay.show {
+            display: flex;
+        }
+
+        .game-over-overlay h1 {
+            color: #ff4444;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ff4444;
+        }
+
+        .game-over-overlay .final-score {
+            color: #fff;
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+
+        .paused-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 60px;
+            border-radius: 15px;
+            border: 2px solid #ffa500;
+            color: #ffa500;
+            font-size: 36px;
+            font-weight: bold;
+            display: none;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="loginScreen" class="auth-container">
+        <h1>TETRIS</h1>
+        <h2>登录</h2>
+        <div class="input-group">
+            <label for="loginUsername">用户名</label>
+            <input type="text" id="loginUsername" maxlength="31" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label for="loginPassword">密码</label>
+            <input type="password" id="loginPassword" maxlength="31" autocomplete="off">
+            <span class="password-toggle" id="loginPasswordToggle">显示密码</span>
+        </div>
+        <button class="btn btn-primary" id="loginBtn">登录</button>
+        <button class="btn btn-secondary" id="showRegisterBtn">注册</button>
+        <div class="instructions">
+            Tab: 切换输入框 | Enter: 登录<br>
+            点击"注册"创建新账户
+        </div>
+    </div>
+
+    <!-- 注册界面 -->
+    <div id="registerScreen" class="auth-container hidden">
+        <h1>TETRIS</h1>
+        <h2>注册</h2>
+        <div class="input-group">
+            <label for="regUsername">用户名</label>
+            <input type="text" id="regUsername" maxlength="31" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label for="regPassword">密码</label>
+            <input type="password" id="regPassword" maxlength="31" autocomplete="off">
+            <span class="password-toggle" id="regPasswordToggle">显示密码</span>
+        </div>
+        <button class="btn btn-primary" id="registerBtn">注册</button>
+        <button class="btn btn-secondary" id="backToLoginBtn">返回</button>
+    </div>
+
+    <!-- 难度选择界面 -->
+    <div id="difficultyScreen" class="difficulty-container hidden">
+        <h1>选择难度</h1>
+        <div class="username-display" id="usernameDisplay">点击编辑用户信息</div>
+        <div class="difficulty-options">
+            <button class="difficulty-btn diff-easy" data-diff="0">简单 (Slow)</button>
+            <button class="difficulty-btn diff-medium" data-diff="1">中等 (Normal)</button>
+            <button class="difficulty-btn diff-hard" data-diff="2">困难 (Fast)</button>
+            <button class="difficulty-btn diff-insane" data-diff="3">疯狂 (Very Fast)</button>
+        </div>
+    </div>
+
+    <!-- 用户信息编辑界面 -->
+    <div id="userInfoScreen" class="userinfo-container hidden">
+        <h2>编辑用户信息</h2>
+        <div class="input-group">
+            <label for="editUsername">新用户名</label>
+            <input type="text" id="editUsername" maxlength="31" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label for="editPassword">新密码（留空则不修改）</label>
+            <input type="password" id="editPassword" maxlength="31" autocomplete="off">
+            <span class="password-toggle" id="editPasswordToggle">显示密码</span>
+        </div>
+        <button class="btn btn-primary" id="saveUserBtn">保存</button>
+        <button class="btn btn-secondary" id="backToDiffBtn">返回</button>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="gameScreen" class="game-container hidden">
+        <div class="game-info">
+            <div class="info-box">
+                <h3>用户名</h3>
+                <button class="username-btn" id="gameUsernameBtn"></button>
+            </div>
+            <div class="info-box">
+                <h3>分数</h3>
+                <div class="value" id="score">0</div>
+            </div>
+            <div class="info-box">
+                <h3>等级</h3>
+                <div class="value" id="level">1</div>
+            </div>
+            <div class="info-box">
+                <h3>消行</h3>
+                <div class="value" id="lines">0</div>
+            </div>
+            <div class="info-box">
+                <h3>下一个</h3>
+                <canvas id="nextPiece" width="100" height="100"></canvas>
+            </div>
+            <div class="info-box">
+                <h3>音乐</h3>
+                <audio id="bgMusic" loop>
+                    <source src="..\胡\C418\Yue Li Mei _ The Soul of Wind - The History (Flute).flac" type="audio/flac">
+                </audio>
+                <button id="musicToggle" class="music-btn">🔊 播放</button>
+            </div>
+            <div class="game-controls">
+                <span>← → 移动</span>
+                <span>↑ 旋转</span>
+                <span>↓ 加速</span>
+                <span>空格 硬降</span>
+                <span>P 暂停 | R 返回</span>
+            </div>
+        </div>
+        <div style="position: relative;">
+            <canvas id="gameCanvas" width="250" height="500"></canvas>
+            <div class="paused-overlay" id="pausedOverlay">已暂停</div>
+        </div>
+    </div>
+
+    <!-- 游戏结束遮罩 -->
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <h1>GAME OVER</h1>
+        <div class="final-score">最终分数: <span id="finalScore">0</span></div>
+        <button class="btn btn-primary" id="restartBtn">重新开始</button>
+        <button class="btn btn-secondary" id="returnBtn">返回菜单</button>
+    </div>
+
+    <script>
+        // ========================== 游戏配置 ==========================
+        const FIELD_WIDTH = 10;
+        const FIELD_HEIGHT = 20;
+        const BLOCK_SIZE = 25;
+
+        // 俄罗斯方块形状
+        const SHAPES = [
+            [[1,1,1,1], [0,0,0,0], [0,0,0,0], [0,0,0,0]], // I
+            [[1,1,0,0], [1,1,0,0], [0,0,0,0], [0,0,0,0]], // O
+            [[0,1,0,0], [1,1,1,0], [0,0,0,0], [0,0,0,0]], // T
+            [[0,0,1,0], [1,1,1,0], [0,0,0,0], [0,0,0,0]], // L
+            [[1,0,0,0], [1,1,1,0], [0,0,0,0], [0,0,0,0]], // J
+            [[0,1,1,0], [1,1,0,0], [0,0,0,0], [0,0,0,0]], // S
+            [[1,1,0,0], [0,1,1,0], [0,0,0,0], [0,0,0,0]]  // Z
+        ];
+
+        // 方块颜色
+        const BLOCK_COLORS = [
+            '#00ffff', // Cyan (I)
+            '#ffff00', // Yellow (O)
+            '#800080', // Purple (T)
+            '#ffa500', // Orange (L)
+            '#0000ff', // Blue (J)
+            '#00ff00', // Green (S)
+            '#ff0000'  // Red (Z)
+        ];
+
+        const DIFFICULTY_SETTINGS = {
+            0: { name: '简单', interval: 600 },
+            1: { name: '中等', interval: 400 },
+            2: { name: '困难', interval: 250 },
+            3: { name: '疯狂', interval: 150 }
+        };
+
+        // ========================== 游戏状态 ==========================
+        let gameField = [];
+        let currentShape = 0;
+        let currentX = 0;
+        let currentY = 0;
+        let currentRotation = 0;
+        let nextShape = 0;
+        let score = 0;
+        let level = 1;
+        let linesCleared = 0;
+        let gameOver = false;
+        let gamePaused = false;
+        let difficulty = 0;
+        let baseInterval = 600;
+        let gameInterval = null;
+        
+        // ========================== 消除动画 ==========================
+        let clearingLines = [];
+        let clearAnimationFrame = 0;
+        const CLEAR_ANIMATION_DURATION = 30;
+        let isClearingAnimation = false;
+        
+        let scorePopups = [];
+        let ghostY = 0;
+
+        // 用户系统
+        let users = [];
+        let currentUser = null;
+        let activeInput = 'username'; // username or password
+
+        // DOM元素
+        const loginScreen = document.getElementById('loginScreen');
+        const registerScreen = document.getElementById('registerScreen');
+        const difficultyScreen = document.getElementById('difficultyScreen');
+        const userInfoScreen = document.getElementById('userInfoScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const gameCanvas = document.getElementById('gameCanvas');
+        const nextCanvas = document.getElementById('nextPiece');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const pausedOverlay = document.getElementById('pausedOverlay');
+        const bgMusic = document.getElementById('bgMusic');
+        const musicToggle = document.getElementById('musicToggle');
+
+        const ctx = gameCanvas.getContext('2d');
+        const nextCtx = nextCanvas.getContext('2d');
+        
+        let isMusicPlaying = false;
+        
+        musicToggle.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                musicToggle.textContent = '🔊 播放';
+                musicToggle.classList.remove('playing');
+            } else {
+                bgMusic.play().catch(e => console.log('播放失败:', e));
+                musicToggle.textContent = '⏸ 暂停';
+                musicToggle.classList.add('playing');
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
+
+        // ========================== 本地存储 ==========================
+        function loadUsers() {
+            const data = localStorage.getItem('tetris_users');
+            if (data) {
+                users = JSON.parse(data);
+            }
+        }
+
+        function saveUsers() {
+            localStorage.setItem('tetris_users', JSON.stringify(users));
+        }
+
+        // ========================== 用户认证 ==========================
+        function tryLogin(username, password) {
+            return users.some(u => u.username === username && u.password === password);
+        }
+
+        function tryRegister(username, password) {
+            if (users.some(u => u.username === username)) {
+                return false; // 用户名已存在
+            }
+            if (users.length >= 100) {
+                return false; // 用户已满
+            }
+            users.push({ username, password });
+            saveUsers();
+            return true;
+        }
+
+        function updateUserInfo(oldUsername, newUsername, newPassword) {
+            const userIndex = users.findIndex(u => u.username === oldUsername);
+            if (userIndex === -1) return false;
+
+            // 检查新用户名是否已存在
+            if (newUsername !== oldUsername && users.some((u, i) => i !== userIndex && u.username === newUsername)) {
+                return false;
+            }
+
+            users[userIndex].username = newUsername;
+            if (newPassword) {
+                users[userIndex].password = newPassword;
+            }
+            saveUsers();
+            return true;
+        }
+
+        // ========================== 界面切换 ==========================
+        function showScreen(screen) {
+            loginScreen.classList.add('hidden');
+            registerScreen.classList.add('hidden');
+            difficultyScreen.classList.add('hidden');
+            userInfoScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            screen.classList.remove('hidden');
+            
+            if (screen === gameScreen) {
+                gameScreen.style.display = 'flex';
+            } else {
+                gameScreen.style.display = '';
+            }
+        }
+
+        function showLogin() {
+            showScreen(loginScreen);
+            document.getElementById('loginUsername').focus();
+        }
+
+        function showRegister() {
+            showScreen(registerScreen);
+            document.getElementById('regUsername').focus();
+        }
+
+        function showDifficulty() {
+            document.getElementById('usernameDisplay').textContent = currentUser.username + ' (点击编辑)';
+            showScreen(difficultyScreen);
+        }
+
+        function showUserInfo() {
+            document.getElementById('editUsername').value = currentUser.username;
+            document.getElementById('editPassword').value = '';
+            showScreen(userInfoScreen);
+        }
+
+        function showGame() {
+            showScreen(gameScreen);
+            document.getElementById('gameUsernameBtn').textContent = currentUser.username;
+        }
+
+        // ========================== 游戏逻辑 ==========================
+        function initGame() {
+            gameField = Array(FIELD_HEIGHT).fill(null).map(() => Array(FIELD_WIDTH).fill(0));
+            score = 0;
+            level = 1;
+            linesCleared = 0;
+            gameOver = false;
+            gamePaused = false;
+
+            currentShape = Math.floor(Math.random() * 7);
+            nextShape = Math.floor(Math.random() * 7);
+            currentX = Math.floor(FIELD_WIDTH / 2) - 2;
+            currentY = 0;
+            currentRotation = 0;
+
+            // 确保初始位置不会发生碰撞
+            while (checkCollision(currentX, currentY, currentShape, currentRotation)) {
+                currentX = Math.floor(FIELD_WIDTH / 2) - 2;
+                currentShape = Math.floor(Math.random() * 7);
+            }
+
+            updateGhostPosition();
+            updateDisplay();
+            drawGame();
+        }
+
+        function startGame(diff) {
+            difficulty = diff;
+            baseInterval = DIFFICULTY_SETTINGS[diff].interval;
+            console.log('Starting game with difficulty:', diff, 'interval:', baseInterval);
+            initGame();
+            showGame();
+            // 确保Canvas已经渲染后再启动游戏循环
+            setTimeout(() => {
+                startGameLoop();
+                console.log('Game loop started');
+            }, 100);
+        }
+
+        function startGameLoop() {
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameTick, baseInterval);
+        }
+
+        function gameTick() {
+            if (gameOver || gamePaused || isClearingAnimation) return;
+
+            if (!checkCollision(currentX, currentY + 1, currentShape, currentRotation)) {
+                currentY++;
+            } else {
+                lockBlock();
+                clearLines();
+                if (!isClearingAnimation) {
+                    spawnNewBlock();
+                    if (checkCollision(currentX, currentY, currentShape, currentRotation)) {
+                        endGame();
+                    }
+                }
+            }
+            updateGhostPosition();
+            drawGame();
+        }
+
+        function checkCollision(x, y, shape, rotation) {
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let row = i, col = j;
+                    for (let r = 0; r < rotation % 4; r++) {
+                        let temp = row;
+                        row = col;
+                        col = 3 - temp;
+                    }
+
+                    if (SHAPES[shape][row][col] === 1) {
+                        let newX = x + j;
+                        let newY = y + i;
+
+                        if (newX < 0 || newX >= FIELD_WIDTH || newY >= FIELD_HEIGHT) {
+                            return true;
+                        }
+
+                        if (newY >= 0 && gameField[newY][newX] !== 0) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function lockBlock() {
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let row = i, col = j;
+                    for (let r = 0; r < currentRotation % 4; r++) {
+                        let temp = row;
+                        row = col;
+                        col = 3 - temp;
+                    }
+
+                    if (SHAPES[currentShape][row][col] === 1) {
+                        let newX = currentX + j;
+                        let newY = currentY + i;
+                        if (newY >= 0) {
+                            gameField[newY][newX] = currentShape + 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        function clearLines() {
+            let linesToClear = [];
+            for (let i = FIELD_HEIGHT - 1; i >= 0; i--) {
+                let isFull = true;
+                for (let j = 0; j < FIELD_WIDTH; j++) {
+                    if (gameField[i][j] === 0) {
+                        isFull = false;
+                        break;
+                    }
+                }
+
+                if (isFull) {
+                    linesToClear.push(i);
+                }
+            }
+
+            if (linesToClear.length > 0) {
+                // 存储要消除的行
+                clearingLines = [...linesToClear];
+                clearAnimationFrame = 0;
+                isClearingAnimation = true;
+                
+                // 播放消除音效
+                playClearSound();
+                
+                // 立即开始动画
+                startClearAnimation();
+            }
+        }
+        
+        function startClearAnimation() {
+            const animate = () => {
+                clearAnimationFrame++;
+                
+                // 渲染动画
+                drawGame();
+                
+                if (clearAnimationFrame < CLEAR_ANIMATION_DURATION) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // 动画完成，真正消除行
+                    finishClearLines();
+                }
+            };
+            requestAnimationFrame(animate);
+        }
+        
+        function finishClearLines() {
+            // 真正消除行
+            for (let i = clearingLines.length - 1; i >= 0; i--) {
+                let row = clearingLines[i];
+                for (let k = row; k > 0; k--) {
+                    gameField[k] = [...gameField[k - 1]];
+                }
+                gameField[0] = Array(FIELD_WIDTH).fill(0);
+            }
+            
+            // 更新分数
+            let linesCount = clearingLines.length;
+            linesCleared += linesCount;
+            let earnedScore = linesCount * 100 * level;
+            score += earnedScore;
+            level = Math.floor(linesCleared / 10) + 1;
+            
+            // 添加分数弹出动画
+            scorePopups.push({
+                score: earnedScore,
+                x: FIELD_WIDTH * BLOCK_SIZE / 2,
+                y: clearingLines[0] * BLOCK_SIZE,
+                frame: 0
+            });
+            
+            // 速度增加
+            clearInterval(gameInterval);
+            let speedIncrease = (level - 1) * (baseInterval / 20);
+            let newInterval = baseInterval - speedIncrease;
+            let minInterval = difficulty === 3 ? 50 : 100;
+            if (newInterval < minInterval) newInterval = minInterval;
+            gameInterval = setInterval(gameTick, newInterval);
+            
+            // 重置动画状态
+            clearingLines = [];
+            isClearingAnimation = false;
+            
+            updateDisplay();
+            drawGame();
+        }
+        
+        function playClearSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function spawnNewBlock() {
+            currentShape = nextShape;
+            nextShape = Math.floor(Math.random() * 7);
+            currentX = Math.floor(FIELD_WIDTH / 2) - 2;
+            currentY = 0;
+            currentRotation = 0;
+        }
+
+        function rotateBlock() {
+            let newRotation = (currentRotation + 1) % 4;
+            if (!checkCollision(currentX, currentY, currentShape, newRotation)) {
+                currentRotation = newRotation;
+            }
+        }
+
+        function updateGhostPosition() {
+            ghostY = currentY;
+            while (!checkCollision(currentX, ghostY + 1, currentShape, currentRotation)) {
+                ghostY++;
+            }
+        }
+
+        function hardDrop() {
+            while (!checkCollision(currentX, currentY + 1, currentShape, currentRotation)) {
+                currentY++;
+            }
+            lockBlock();
+            clearLines();
+            spawnNewBlock();
+            if (checkCollision(currentX, currentY, currentShape, currentRotation)) {
+                endGame();
+            }
+            updateGhostPosition();
+            drawGame();
+        }
+
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameInterval);
+            document.getElementById('finalScore').textContent = score;
+            gameOverOverlay.classList.add('show');
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('lines').textContent = linesCleared;
+        }
+
+        // ========================== 绘制 ==========================
+        function drawGame() {
+            // 清空画布
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+            // 绘制游戏区域边框
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, FIELD_WIDTH * BLOCK_SIZE, FIELD_HEIGHT * BLOCK_SIZE);
+
+            // 绘制已锁定的方块（带消除动画）
+            for (let i = 0; i < FIELD_HEIGHT; i++) {
+                for (let j = 0; j < FIELD_WIDTH; j++) {
+                    if (gameField[i][j] > 0) {
+                        // 检查是否是正在消除的行
+                        let isClearing = clearingLines.includes(i);
+                        let alpha = 1;
+                        let scale = 1;
+                        let offsetY = 0;
+                        
+                        if (isClearing) {
+                            // 计算闪烁效果
+                            let flash = Math.sin(clearAnimationFrame * 0.5);
+                            alpha = 0.5 + flash * 0.5;
+                            // 缩放效果
+                            scale = 1 - (clearAnimationFrame / CLEAR_ANIMATION_DURATION) * 0.3;
+                            // 向上浮动效果
+                            offsetY = - (clearAnimationFrame / CLEAR_ANIMATION_DURATION) * 10;
+                        }
+                        
+                        drawBlockWithEffect(ctx, j * BLOCK_SIZE, i * BLOCK_SIZE + offsetY, 
+                                          BLOCK_COLORS[gameField[i][j] - 1], scale, alpha);
+                    }
+                }
+            }
+
+            // 绘制幽灵方块
+            if (!gameOver && !gamePaused && !isClearingAnimation) {
+                drawGhostPiece();
+            }
+
+            // 绘制当前方块
+            if (!gameOver && !isClearingAnimation) {
+                drawCurrentPiece();
+            }
+
+            // 绘制下一个方块
+            drawNextPiece();
+            
+            // 绘制分数弹出动画
+            drawScorePopups();
+        }
+        
+        function drawBlockWithEffect(context, x, y, color, scale, alpha) {
+            context.save();
+            context.globalAlpha = alpha;
+            
+            let centerX = x + BLOCK_SIZE / 2;
+            let centerY = y + BLOCK_SIZE / 2;
+            
+            context.translate(centerX, centerY);
+            context.scale(scale, scale);
+            context.translate(-centerX, -centerY);
+            
+            // 方块主体
+            context.fillStyle = color;
+            context.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+            // 高光效果
+            context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            context.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, 4);
+            context.fillRect(x + 1, y + 1, 4, BLOCK_SIZE - 2);
+
+            // 阴影效果
+            context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            context.fillRect(x + BLOCK_SIZE - 5, y + 1, 4, BLOCK_SIZE - 2);
+            context.fillRect(x + 1, y + BLOCK_SIZE - 5, BLOCK_SIZE - 2, 4);
+            
+            context.restore();
+        }
+        
+        function drawScorePopups() {
+            for (let i = scorePopups.length - 1; i >= 0; i--) {
+                let popup = scorePopups[i];
+                popup.frame++;
+                
+                let alpha = 1 - (popup.frame / 40);
+                let offsetY = -popup.frame * 2;
+                
+                if (alpha <= 0) {
+                    scorePopups.splice(i, 1);
+                    continue;
+                }
+                
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#ffff00';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 10;
+                ctx.fillText('+' + popup.score, popup.x, popup.y + offsetY);
+                ctx.restore();
+            }
+        }
+
+        function drawBlock(context, x, y, color) {
+            // 方块主体
+            context.fillStyle = color;
+            context.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+            // 高光效果
+            context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            context.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, 4);
+            context.fillRect(x + 1, y + 1, 4, BLOCK_SIZE - 2);
+
+            // 阴影效果
+            context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            context.fillRect(x + BLOCK_SIZE - 5, y + 1, 4, BLOCK_SIZE - 2);
+            context.fillRect(x + 1, y + BLOCK_SIZE - 5, BLOCK_SIZE - 2, 4);
+        }
+
+        function drawCurrentPiece() {
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let row = i, col = j;
+                    for (let r = 0; r < currentRotation % 4; r++) {
+                        let temp = row;
+                        row = col;
+                        col = 3 - temp;
+                    }
+
+                    if (SHAPES[currentShape][row][col] === 1) {
+                        let newX = currentX + j;
+                        let newY = currentY + i;
+                        if (newY >= 0) {
+                            drawBlock(ctx, newX * BLOCK_SIZE, newY * BLOCK_SIZE, BLOCK_COLORS[currentShape]);
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawGhostPiece() {
+            ctx.globalAlpha = 0.3;
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let row = i, col = j;
+                    for (let r = 0; r < currentRotation % 4; r++) {
+                        let temp = row;
+                        row = col;
+                        col = 3 - temp;
+                    }
+
+                    if (SHAPES[currentShape][row][col] === 1) {
+                        let newX = currentX + j;
+                        let newY = ghostY + i;
+                        if (newY >= 0) {
+                            drawBlock(ctx, newX * BLOCK_SIZE, newY * BLOCK_SIZE, BLOCK_COLORS[currentShape]);
+                        }
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawNextPiece() {
+            nextCtx.fillStyle = '#111';
+            nextCtx.fillRect(0, 0, 100, 100);
+
+            const smallBlockSize = 20;
+            const offsetX = (100 - 4 * smallBlockSize) / 2;
+            const offsetY = (100 - 4 * smallBlockSize) / 2;
+
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    if (SHAPES[nextShape][i][j] === 1) {
+                        nextCtx.fillStyle = BLOCK_COLORS[nextShape];
+                        nextCtx.fillRect(offsetX + j * smallBlockSize + 1, offsetY + i * smallBlockSize + 1, smallBlockSize - 2, smallBlockSize - 2);
+                    }
+                }
+            }
+        }
+
+        // ========================== 事件处理 ==========================
+        // 登录
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (username && password && tryLogin(username, password)) {
+                currentUser = { username, password };
+                showDifficulty();
+            } else {
+                alert('用户名或密码错误！');
+            }
+        });
+
+        // 显示密码切换
+        document.getElementById('loginPasswordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('loginPassword');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.textContent = '隐藏密码';
+            } else {
+                passwordInput.type = 'password';
+                this.textContent = '显示密码';
+            }
+        });
+
+        document.getElementById('regPasswordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('regPassword');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.textContent = '隐藏密码';
+            } else {
+                passwordInput.type = 'password';
+                this.textContent = '显示密码';
+            }
+        });
+
+        document.getElementById('editPasswordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('editPassword');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.textContent = '隐藏密码';
+            } else {
+                passwordInput.type = 'password';
+                this.textContent = '显示密码';
+            }
+        });
+
+        // 注册
+        document.getElementById('showRegisterBtn').addEventListener('click', showRegister);
+
+        document.getElementById('backToLoginBtn').addEventListener('click', () => {
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            showLogin();
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+
+            if (username && password) {
+                if (tryRegister(username, password)) {
+                    currentUser = { username, password };
+                    showDifficulty();
+                } else {
+                    alert('用户名已存在或数据库已满！');
+                }
+            }
+        });
+
+        // 难度选择
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const diff = parseInt(btn.dataset.diff);
+                startGame(diff);
+            });
+        });
+
+        // 用户信息编辑
+        document.getElementById('usernameDisplay').addEventListener('click', showUserInfo);
+        document.getElementById('gameUsernameBtn').addEventListener('click', showUserInfo);
+
+        document.getElementById('backToDiffBtn').addEventListener('click', showDifficulty);
+
+        document.getElementById('saveUserBtn').addEventListener('click', () => {
+            const newUsername = document.getElementById('editUsername').value;
+            const newPassword = document.getElementById('editPassword').value;
+
+            if (newUsername) {
+                if (updateUserInfo(currentUser.username, newUsername, newPassword)) {
+                    currentUser.username = newUsername;
+                    if (newPassword) currentUser.password = newPassword;
+                    showDifficulty();
+                } else {
+                    alert('更新失败！用户名可能已存在。');
+                }
+            }
+        });
+
+        // 游戏控制
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            gameOverOverlay.classList.remove('show');
+            initGame();
+            startGameLoop();
+        });
+
+        document.getElementById('returnBtn').addEventListener('click', () => {
+            gameOverOverlay.classList.remove('show');
+            showDifficulty();
+        });
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            // 登录/注册界面
+            if (!currentUser || userInfoScreen.classList.contains('hidden') === false) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const activeScreen = !registerScreen.classList.contains('hidden') ? 'reg' :
+                                        !userInfoScreen.classList.contains('hidden') ? 'edit' : 'login';
+                    
+                    if (activeScreen === 'login') {
+                        const userInput = document.getElementById('loginUsername');
+                        const passInput = document.getElementById('loginPassword');
+                        if (document.activeElement === userInput) {
+                            passInput.focus();
+                        } else {
+                            userInput.focus();
+                        }
+                    } else if (activeScreen === 'reg') {
+                        const userInput = document.getElementById('regUsername');
+                        const passInput = document.getElementById('regPassword');
+                        if (document.activeElement === userInput) {
+                            passInput.focus();
+                        } else {
+                            userInput.focus();
+                        }
+                    } else if (activeScreen === 'edit') {
+                        const userInput = document.getElementById('editUsername');
+                        const passInput = document.getElementById('editPassword');
+                        if (document.activeElement === userInput) {
+                            passInput.focus();
+                        } else {
+                            userInput.focus();
+                        }
+                    }
+                } else if (e.key === 'Enter') {
+                    if (!registerScreen.classList.contains('hidden')) {
+                        document.getElementById('registerBtn').click();
+                    } else if (!userInfoScreen.classList.contains('hidden')) {
+                        document.getElementById('saveUserBtn').click();
+                    } else {
+                        document.getElementById('loginBtn').click();
+                    }
+                }
+                return;
+            }
+
+            // 游戏界面
+            if (gameScreen.classList.contains('hidden')) return;
+
+            if (gameOver) {
+                if (e.key === 'Enter') {
+                    document.getElementById('restartBtn').click();
+                }
+                return;
+            }
+
+            if (e.key === 'p' || e.key === 'P') {
+                gamePaused = !gamePaused;
+                pausedOverlay.style.display = gamePaused ? 'block' : 'none';
+                return;
+            }
+
+            if (gamePaused) return;
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    if (!checkCollision(currentX - 1, currentY, currentShape, currentRotation)) {
+                        currentX--;
+                        updateGhostPosition();
+                        drawGame();
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (!checkCollision(currentX + 1, currentY, currentShape, currentRotation)) {
+                        currentX++;
+                        updateGhostPosition();
+                        drawGame();
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (!checkCollision(currentX, currentY + 1, currentShape, currentRotation)) {
+                        currentY++;
+                        updateGhostPosition();
+                        drawGame();
+                    }
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    rotateBlock();
+                    updateGhostPosition();
+                    drawGame();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    hardDrop();
+                    break;
+                case 'r':
+                case 'R':
+                    clearInterval(gameInterval);
+                    showDifficulty();
+                    break;
+            }
+        });
+
+        // ========================== 初始化 ==========================
+        loadUsers();
+    </script>
+</body>
+</html>

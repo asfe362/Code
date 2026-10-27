@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="纯HTML/CSS/JavaScript实现的连连看小游戏，支持倒计时、提示、计分与响应式布局。" />
+  <meta name="theme-color" content="#1e293b" />
+  <title>连连看 · LianLianKan</title>
+  <style>
+    /* ==========================================================================
+       全局重置与设计变量
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* 主题色：沉稳的深色背景 + 高对比强调色 */
+      --bg-app: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-panel-2: #273449;
+      --bg-cell: #334155;
+      --bg-cell-hover: #475569;
+      --bg-cell-selected: #fbbf24;
+      --border-soft: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.18);
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+
+      --gap-1: 4px;
+      --gap-2: 8px;
+      --gap-3: 12px;
+      --gap-4: 16px;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button {
+      font-family: inherit;
+      color: inherit;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    /* ==========================================================================
+       应用骨架（语义化标签）
+       ========================================================================== */
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: var(--gap-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-3);
+      flex: 1 1 auto;
+    }
+
+    .app__header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-2);
+      padding: var(--gap-3);
+      background: var(--bg-panel);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-md);
+    }
+
+    .app__title {
+      font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: var(--gap-2);
+    }
+
+    .app__title-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #0b1220;
+      font-weight: 700;
+    }
+
+    .app__subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       状态栏：倒计时 / 步数 / 分数 / 提示
+       ========================================================================== */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gap-2);
+    }
+
+    .stat {
+      background: var(--bg-panel-2);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: var(--gap-2) var(--gap-3);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .stat__label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat__value {
+      font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+
+    .stat--danger .stat__value { color: var(--danger); }
+    .stat--warning .stat__value { color: var(--warning); }
+    .stat--accent .stat__value { color: var(--accent); }
+
+    /* ==========================================================================
+       工具栏：重新开始 / 提示 / 难度
+       ========================================================================== */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gap-2);
+      align-items: center;
+    }
+
+    .toolbar__group {
+      display: flex;
+      gap: var(--gap-2);
+      flex-wrap: wrap;
+    }
+
+    .toolbar__spacer { flex: 1 1 auto; }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      background: var(--bg-panel-2);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 0.88rem;
+      border: 1px solid var(--border-strong);
+      transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover { background: #324155; border-color: var(--accent); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn--primary {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+      color: #061018;
+    }
+    .btn--primary:hover { background: var(--accent); border-color: var(--accent); }
+
+    .btn--ghost { background: transparent; }
+
+    .difficulty {
+      display: inline-flex;
+      background: var(--bg-panel-2);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-strong);
+      overflow: hidden;
+    }
+
+    .difficulty__option {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      min-height: 36px;
+    }
+
+    .difficulty__option[aria-pressed="true"] {
+      background: var(--accent);
+      color: #061018;
+    }
+
+    /* ==========================================================================
+       游戏主舞台
+       ========================================================================== */
+    .stage {
+      flex: 1 1 auto;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-panel);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      padding: var(--gap-3);
+      box-shadow: var(--shadow-md);
+      min-height: 0;
+    }
+
+    .board {
+      --cols: 8;
+      --rows: 6;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      grid-template-rows: repeat(var(--rows), 1fr);
+      gap: var(--gap-1);
+      width: 100%;
+      max-width: min(720px, 92vw);
+      aspect-ratio: var(--cols) / var(--rows);
+      background: var(--bg-panel-2);
+      border-radius: var(--radius-md);
+      padding: var(--gap-2);
+    }
+
+    .cell {
+      position: relative;
+      background: var(--bg-cell);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(1.2rem, 4.2vw, 2.2rem);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease, opacity 0.25s ease;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+
+    .cell:hover { background: var(--bg-cell-hover); }
+
+    .cell.is-empty {
+      background: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .cell.is-selected {
+      background: var(--bg-cell-selected);
+      color: #1f2937;
+      transform: scale(1.05);
+      box-shadow: 0 0 0 2px #fde68a, 0 0 14px rgba(251, 191, 36, 0.6);
+    }
+
+    .cell.is-hint {
+      animation: hintPulse 1.2s ease-in-out infinite;
+    }
+
+    .cell.is-removing {
+      animation: removeAnim 0.42s ease-out forwards;
+    }
+
+    .cell.is-disabled {
+      pointer-events: none;
+    }
+
+    @keyframes removeAnim {
+      0%   { transform: scale(1); opacity: 1; }
+      40%  { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(0.1); opacity: 0; }
+    }
+
+    @keyframes hintPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55); }
+      50%      { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+    }
+
+    /* ==========================================================================
+       棋盘未开始遮罩（覆盖整个 stage，要求用户先点开始）
+       ========================================================================== */
+    .board__overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-radius: var(--radius-md);
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: opacity 0.3s ease;
+    }
+
+    .is-hidden { display: none !important; }
+
+    .board__overlay-inner {
+      text-align: center;
+      padding: var(--gap-3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--gap-2);
+    }
+
+    .board__overlay-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #061018;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.15),
+                  0 8px 24px rgba(14, 165, 233, 0.4);
+      animation: overlayPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes overlayPulse {
+      0%, 100% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.15),
+                            0 8px 24px rgba(14, 165, 233, 0.4); }
+      50%      { box-shadow: 0 0 0 14px rgba(56, 189, 248, 0),
+                            0 8px 24px rgba(14, 165, 233, 0.4); }
+    }
+
+    .board__overlay-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+    }
+
+    .board__overlay-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       路径连接线（成功连接时绘制的 SVG 折线）
+       ========================================================================== */
+    .path-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .path-polyline {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 0.18;          /* 基于 viewBox 单位，自动缩放 */
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.95;
+      animation: pathFade 0.6s ease-out forwards;
+    }
+
+    @keyframes pathFade {
+      0%   { opacity: 0.95; stroke-width: 0.28; }
+      100% { opacity: 0;    stroke-width: 0.08; }
+    }
+
+    /* ==========================================================================
+       弹窗（胜负/设置）
+       ========================================================================== */
+    .modal-root {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.7);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--gap-3);
+      z-index: 50;
+    }
+
+    .modal-root.is-open { display: flex; }
+
+    .modal {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: var(--gap-4);
+      max-width: 420px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-3);
+      animation: modalIn 0.25s ease-out;
+    }
+
+    @keyframes modalIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .modal__title {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .modal__title--success { color: var(--success); }
+    .modal__title--fail    { color: var(--danger); }
+
+    .modal__desc {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .modal__stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--gap-2);
+      margin-top: var(--gap-2);
+    }
+
+    .modal__stat {
+      background: var(--bg-panel-2);
+      border-radius: var(--radius-md);
+      padding: var(--gap-2);
+    }
+    .modal__stat-label { font-size: 0.72rem; color: var(--text-muted); }
+    .modal__stat-value { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
+
+    .modal__actions {
+      display: flex;
+      gap: var(--gap-2);
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: var(--gap-2);
+    }
+
+    /* ==========================================================================
+       响应式：窄屏优化
+       ========================================================================== */
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat__value { font-size: 1.15rem; }
+      .toolbar { gap: var(--gap-2); }
+      .btn { font-size: 0.82rem; padding: 6px 10px; }
+      .difficulty__option { padding: 6px 10px; font-size: 0.8rem; }
+      .stage { padding: var(--gap-2); }
+    }
+
+    @media (max-width: 380px) {
+      .app { padding: var(--gap-2); }
+      .stats { grid-template-columns: repeat(2, 1fr); gap: var(--gap-1); }
+    }
+
+    /* ==========================================================================
+       可访问性：减少动效
+       ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 应用主容器 -->
+  <main class="app" aria-label="连连看游戏">
+    <!-- 头部标题与说明 -->
+    <header class="app__header">
+      <h1 class="app__title">
+        连连看
+        <span class="app__title-badge" aria-hidden="true">HTML5</span>
+      </h1>
+      <p class="app__subtitle">连接两个相同的图案，且路径转弯不超过 2 次。</p>
+    </header>
+
+    <!-- 状态栏 -->
+    <section class="stats" aria-label="游戏状态">
+      <div class="stat stat--danger">
+        <span class="stat__label">倒计时</span>
+        <span class="stat__value" id="stat-time">90s</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">已用步数</span>
+        <span class="stat__value" id="stat-steps">0</span>
+      </div>
+      <div class="stat stat--accent">
+        <span class="stat__label">分数</span>
+        <span class="stat__value" id="stat-score">0</span>
+      </div>
+      <div class="stat stat--warning">
+        <span class="stat__label">剩余提示</span>
+        <span class="stat__value" id="stat-hints">5</span>
+      </div>
+    </section>
+
+    <!-- 工具栏 -->
+    <section class="toolbar" aria-label="游戏工具栏">
+      <div class="toolbar__group" role="group" aria-label="难度切换">
+        <div class="difficulty" id="difficulty">
+          <button class="difficulty__option" data-difficulty="easy" aria-pressed="true">简单</button>
+          <button class="difficulty__option" data-difficulty="medium" aria-pressed="false">中等</button>
+          <button class="difficulty__option" data-difficulty="hard" aria-pressed="false">困难</button>
+        </div>
+      </div>
+      <div class="toolbar__spacer"></div>
+      <div class="toolbar__group">
+        <button class="btn btn--primary" id="btn-start" type="button" aria-label="开始游戏">
+          <span aria-hidden="true">▶</span><span>开始</span>
+        </button>
+        <button class="btn" id="btn-hint" type="button" aria-label="使用一次提示">
+          <span aria-hidden="true">💡</span><span>提示</span>
+        </button>
+        <button class="btn is-hidden" id="btn-restart" type="button" aria-label="重新开始游戏">
+          <span aria-hidden="true">↻</span><span>重新开始</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 游戏舞台 -->
+    <section class="stage" aria-label="游戏舞台">
+      <div class="board" id="board" role="grid" aria-label="连连看棋盘"></div>
+      <div class="board__overlay" id="board-overlay">
+        <div class="board__overlay-inner">
+          <div class="board__overlay-icon" aria-hidden="true">▶</div>
+          <div class="board__overlay-title">准备开始</div>
+          <div class="board__overlay-desc">点击「开始」按钮即可计时挑战</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 弹窗：胜利 / 失败 -->
+  <div class="modal-root" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+    <div class="modal">
+      <h2 class="modal__title" id="modal-title">提示</h2>
+      <p class="modal__desc" id="modal-desc">描述</p>
+      <div class="modal__stats" id="modal-stats" hidden>
+        <div class="modal__stat">
+          <div class="modal__stat-label">用时</div>
+          <div class="modal__stat-value" id="modal-time">0s</div>
+        </div>
+        <div class="modal__stat">
+          <div class="modal__stat-label">步数</div>
+          <div class="modal__stat-value" id="modal-steps">0</div>
+        </div>
+        <div class="modal__stat">
+          <div class="modal__stat-label">得分</div>
+          <div class="modal__stat-value" id="modal-score">0</div>
+        </div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="modal-close" type="button">关闭</button>
+        <button class="btn btn--primary" id="modal-restart" type="button">再来一局</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /* ============================================================================
+     连连看 · 核心逻辑（原生 JS，无任何依赖）
+     ----------------------------------------------------------------------------
+     数据模型：
+       - grid[row][col] === 0    表示空格
+       - grid[row][col] > 0      表示图案 ID
+     路径判定：
+       - 把网格四周外视为永远可走的虚拟通道（边界 -1 标记）
+       - 从起点 BFS，每步可向四邻移动；
+         起点 / 终点格子本身视为可走，不计入阻挡
+       - 记录到达每个点所用的转弯次数与方向；
+         当当前方向与上一方向不一致时记一次转弯
+       - 当到达终点时，记录的转弯次数 ≤ 2 即为可消除
+     ============================================================================ */
+  (function () {
+    'use strict';
+
+    // ---------- 配置 ----------
+    var ICON_POOL = [
+      '🍎','🍊','🍋','🍉','🍇','🍓','🍒','🥝','🍑','🍍',
+      '🥥','🍌','🍐','🍆','🌽','🥕','🍅','🍞','🍩','🍪',
+      '🐶','🐱','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮'
+    ];
+
+    var DIFFICULTY = {
+      easy:   { cols: 6, rows: 4, time: 120, hint: 6 },   // 24格 / 12对
+      medium: { cols: 8, rows: 6, time: 100, hint: 5 },   // 48格 / 24对
+      hard:   { cols: 10, rows: 8, time: 100, hint: 5 }   // 80格 / 40对
+    };
+
+    // ---------- DOM 引用 ----------
+    var boardEl       = document.getElementById('board');
+    var overlayEl     = document.getElementById('board-overlay');
+    var statTimeEl    = document.getElementById('stat-time');
+    var statStepsEl   = document.getElementById('stat-steps');
+    var statScoreEl   = document.getElementById('stat-score');
+    var statHintsEl   = document.getElementById('stat-hints');
+    var btnStartEl    = document.getElementById('btn-start');
+    var btnHintEl     = document.getElementById('btn-hint');
+    var btnRestartEl  = document.getElementById('btn-restart');
+    var difficultyEl  = document.getElementById('difficulty');
+    var modalEl       = document.getElementById('modal');
+    var modalTitleEl  = document.getElementById('modal-title');
+    var modalDescEl   = document.getElementById('modal-desc');
+    var modalStatsEl  = document.getElementById('modal-stats');
+    var modalTimeEl   = document.getElementById('modal-time');
+    var modalStepsEl  = document.getElementById('modal-steps');
+    var modalScoreEl  = document.getElementById('modal-score');
+    var modalCloseEl  = document.getElementById('modal-close');
+    var modalRestartEl= document.getElementById('modal-restart');
+
+    // ---------- 游戏状态 ----------
+    var state = {
+      difficulty: 'medium',
+      cols: 8,
+      rows: 6,
+      grid: [],              // grid[r][c]
+      selected: null,        // {r, c, id}
+      hintsLeft: 5,
+      score: 0,
+      steps: 0,
+      timeLeft: 100,
+      totalTime: 100,
+      timerId: null,
+      busy: false,           // 动画期间禁止点击
+      ended: false,
+      started: false         // 是否已点击「开始」（控制计时器与按钮显隐）
+    };
+
+    // ==========================================================================
+    // 工具函数
+    // ==========================================================================
+
+    /** 安全随机整数 [min, max] */
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    /** 洗牌（Fisher-Yates） */
+    function shuffle(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = randInt(0, i);
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    /** 坐标是否在有效网格内 */
+    function inBounds(r, c) {
+      return r >= 0 && r < state.rows && c >= 0 && c < state.cols;
+    }
+
+    /** 格子是否为空（可通行） */
+    function isEmpty(r, c) {
+      if (!inBounds(r, c)) return true;     // 边界外视为通路
+      return state.grid[r][c] === 0;
+    }
+
+    // ==========================================================================
+    // 路径搜索：判断两个格子能否连接（转弯 ≤ 2）
+    // --------------------------------------------------------------------------
+    // 策略：把网格四周外扩 1 圈（虚拟外圈），虚拟圈永远可走。
+    //       BFS 维护"当前方向"和"已用转弯次数"，方向变化时 +1 转弯。
+    //       起点第一步不计转弯（dir = -1）。
+    //       起点与终点格子视为可走（不计入阻挡）。
+    // ==========================================================================
+    function canConnect(r1, c1, r2, c2) {
+      if (r1 === r2 && c1 === c2) return null;
+      if (state.grid[r1][c1] === 0 || state.grid[r2][c2] === 0) return null;
+      if (state.grid[r1][c1] !== state.grid[r2][c2]) return null;
+      return canConnectExtended(r1, c1, r2, c2);
+    }
+
+    /** 扩展边界 BFS 实现：把网格四周外扩 1 圈，虚拟外圈永远可走
+     *  使用 0-1 BFS：
+     *    - 边权：方向不变为 0，方向变化为 1（即一次转弯）
+     *    - 起点第一步不计转弯（parent_dir[sr][sc] = -1）
+     *    - 双端队列：权 0 入队头，权 1 入队尾 → 按转弯数非递减处理
+     */
+    function canConnectExtended(r1, c1, r2, c2) {
+      var H = state.rows;
+      var W = state.cols;
+      var PH = H + 2;
+      var PW = W + 2;
+
+      var sr = r1 + 1, sc = c1 + 1;
+      var er = r2 + 1, ec = c2 + 1;
+
+      function passable(r, c) {
+        if (r === 0 || r === PH - 1 || c === 0 || c === PW - 1) return true;
+        if (r === sr && c === sc) return true;
+        if (r === er && c === ec) return true;
+        var gr = r - 1, gc = c - 1;
+        return state.grid[gr][gc] === 0;
+      }
+
+      // 方向：0=up, 1=right, 2=down, 3=left
+      var DR = [-1, 0, 1, 0];
+      var DC = [0, 1, 0, -1];
+
+      // dist[r][c]    = 最少转弯数；-1 未访问
+      // pdir[r][c]    = 到达该点时的方向（出边方向，相对父节点）
+      // parent[r][c]  = { r, c } 父节点坐标（用于回溯）
+      var dist   = [];
+      var pdir   = [];
+      var parent = [];
+      for (var i = 0; i < PH; i++) {
+        var drow = new Array(PW);
+        var prow = new Array(PW);
+        var parrow = new Array(PW);
+        for (var j = 0; j < PW; j++) {
+          drow[j] = -1;
+          prow[j] = -1;
+          parrow[j] = null;
+        }
+        dist.push(drow);
+        pdir.push(prow);
+        parent.push(parrow);
+      }
+
+      var deque = [];
+      dist[sr][sc] = 0;
+      pdir[sr][sc] = -1;
+      parent[sr][sc] = null;
+      deque.push(sr * PW + sc);
+
+      while (deque.length > 0) {
+        var pos = deque.shift();
+        var r = Math.floor(pos / PW);
+        var c = pos % PW;
+        var curDist = dist[r][c];
+        var curDir  = pdir[r][c];
+
+        if (r === er && c === ec) {
+          return {
+            turns: curDist,
+            path: reconstructPath(parent, er, ec, sr, sc, PW)
+          };
+        }
+
+        for (var d = 0; d < 4; d++) {
+          var nr = r + DR[d];
+          var nc = c + DC[d];
+          if (nr < 0 || nr >= PH || nc < 0 || nc >= PW) continue;
+          if (!passable(nr, nc)) continue;
+
+          // 计算新增转弯：方向变化 +1（起点不计）
+          var extra = (curDir !== -1 && curDir !== d) ? 1 : 0;
+          var newDist = curDist + extra;
+          if (newDist > 2) continue;
+          if (dist[nr][nc] !== -1 && newDist >= dist[nr][nc]) continue;
+
+          dist[nr][nc] = newDist;
+          pdir[nr][nc] = d;
+          parent[nr][nc] = { r: r, c: c };
+
+          if (extra === 0) deque.unshift(nr * PW + nc); // 队头
+          else            deque.push(nr * PW + nc);     // 队尾
+        }
+      }
+      return null;
+    }
+
+    /** 回溯得到路径节点列表（含起点终点），坐标映射回原网格 [0, rows) × [0, cols) */
+    function reconstructPath(parent, er, ec, sr, sc, PW) {
+      var path = [];
+      var r = er, c = ec;
+      while (!(r === sr && c === sc)) {
+        path.push({ r: r - 1, c: c - 1 });
+        var p = parent[r][c];
+        if (!p) break;
+        r = p.r; c = p.c;
+      }
+      path.push({ r: sr - 1, c: sc - 1 });
+      path.reverse();
+      return path;
+    }
+
+    // ==========================================================================
+    // 棋盘生成
+    // --------------------------------------------------------------------------
+    // 思路：
+    //   1) 根据行列决定对数 pairs = (rows*cols)/2
+    //   2) 每对选取一个图标 ID，出现两次，构造长度为 rows*cols 的数组
+    //   3) 洗牌后填入网格
+    //   4) 检查初始局面是否至少存在一对可连接；
+    //      如果完全无解则重新生成（最多尝试 N 次）
+    // ==========================================================================
+    function generateBoard() {
+      var cfg = DIFFICULTY[state.difficulty];
+      state.cols = cfg.cols;
+      state.rows = cfg.rows;
+      state.totalTime = cfg.time;
+      state.timeLeft = cfg.time;
+      state.hintsLeft = cfg.hint;
+
+      var total = state.rows * state.cols;
+      var pairs = total / 2;
+
+      // 选择若干图标 ID
+      var pool = shuffle(ICON_POOL).slice(0, pairs);
+
+      var tiles = [];
+      for (var i = 0; i < pairs; i++) {
+        tiles.push(pool[i]);
+        tiles.push(pool[i]);
+      }
+      tiles = shuffle(tiles);
+
+      // 填入 grid
+      var grid = [];
+      for (var r = 0; r < state.rows; r++) {
+        var row = [];
+        for (var c = 0; c < state.cols; c++) {
+          row.push(tiles[r * state.cols + c]);
+        }
+        grid.push(row);
+      }
+      state.grid = grid;
+
+      // 校验可解性：若初始无任何可消除对，则重试
+      var attempts = 0;
+      while (!hasAnyMove() && attempts < 20) {
+        tiles = shuffle(tiles);
+        for (var r2 = 0; r2 < state.rows; r2++) {
+          for (var c2 = 0; c2 < state.cols; c2++) {
+            state.grid[r2][c2] = tiles[r2 * state.cols + c2];
+          }
+        }
+        attempts++;
+      }
+    }
+
+    /** 检查当前局面是否存在任何可消除对 */
+    function hasAnyMove() {
+      var coords = [];
+      for (var r = 0; r < state.rows; r++) {
+        for (var c = 0; c < state.cols; c++) {
+          if (state.grid[r][c] !== 0) coords.push({ r: r, c: c });
+        }
+      }
+      for (var i = 0; i < coords.length; i++) {
+        for (var j = i + 1; j < coords.length; j++) {
+          if (state.grid[coords[i].r][coords[i].c] !== state.grid[coords[j].r][coords[j].c]) continue;
+          var res = canConnectExtended(coords[i].r, coords[i].c, coords[j].r, coords[j].c);
+          if (res && res.turns <= 2) return true;
+        }
+      }
+      return false;
+    }
+
+    /** 寻找一对可消除的提示对（不存在则返回 null） */
+    function findHintPair() {
+      var coords = [];
+      for (var r = 0; r < state.rows; r++) {
+        for (var c = 0; c < state.cols; c++) {
+          if (state.grid[r][c] !== 0) coords.push({ r: r, c: c });
+        }
+      }
+      var best = null;
+      for (var i = 0; i < coords.length; i++) {
+        for (var j = i + 1; j < coords.length; j++) {
+          if (state.grid[coords[i].r][coords[i].c] !== state.grid[coords[j].r][coords[j].c]) continue;
+          var res = canConnectExtended(coords[i].r, coords[i].c, coords[j].r, coords[j].c);
+          if (res && res.turns <= 2) {
+            // 偏好转弯少的（更自然）
+            if (!best || res.turns < best.turns) {
+              best = { a: coords[i], b: coords[j], path: res.path };
+            }
+          }
+        }
+      }
+      return best;
+    }
+
+    // ==========================================================================
+    // 渲染
+    // ==========================================================================
+    function renderBoard() {
+      boardEl.style.setProperty('--cols', state.cols);
+      boardEl.style.setProperty('--rows', state.rows);
+      boardEl.innerHTML = '';
+
+      for (var r = 0; r < state.rows; r++) {
+        for (var c = 0; c < state.cols; c++) {
+          var v = state.grid[r][c];
+          var cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'cell';
+          cell.setAttribute('role', 'gridcell');
+          cell.setAttribute('data-r', String(r));
+          cell.setAttribute('data-c', String(c));
+          cell.setAttribute('aria-label', '第 ' + (r + 1) + ' 行第 ' + (c + 1) + ' 列');
+          if (v === 0) {
+            cell.classList.add('is-empty');
+            cell.setAttribute('aria-disabled', 'true');
+          } else {
+            cell.textContent = v;
+          }
+          cell.addEventListener('click', onCellClick);
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updateStatUI() {
+      statTimeEl.textContent = state.timeLeft + 's';
+      statStepsEl.textContent = String(state.steps);
+      statScoreEl.textContent = String(state.score);
+      statHintsEl.textContent = String(state.hintsLeft);
+      btnHintEl.disabled = state.hintsLeft <= 0 || state.busy || state.ended || !state.started;
+      refreshButtons();
+    }
+
+    /** 根据 started / ended 状态切换「开始 / 重新开始」按钮与遮罩 */
+    function refreshButtons() {
+      // 未开始：显示「开始」按钮，隐藏「重新开始」，显示遮罩
+      // 已开始 / 已结束：显示「重新开始」，隐藏「开始」，隐藏遮罩
+      var showStart = !state.started;
+      btnStartEl.classList.toggle('is-hidden', !showStart);
+      btnRestartEl.classList.toggle('is-hidden', showStart);
+      if (overlayEl) overlayEl.classList.toggle('is-hidden', !showStart);
+    }
+
+    // ==========================================================================
+    // 点击交互
+    // ==========================================================================
+    function onCellClick(e) {
+      if (state.busy || state.ended || !state.started) return;
+      var target = e.currentTarget;
+      var r = parseInt(target.getAttribute('data-r'), 10);
+      var c = parseInt(target.getAttribute('data-c'), 10);
+      var id = state.grid[r][c];
+      if (!id) return; // 空格子
+
+      // 取消选择：再点同一个格子
+      if (state.selected && state.selected.r === r && state.selected.c === c) {
+        clearSelection();
+        return;
+      }
+
+      // 第一次选择
+      if (!state.selected) {
+        state.selected = { r: r, c: c, id: id };
+        target.classList.add('is-selected');
+        target.setAttribute('aria-pressed', 'true');
+        return;
+      }
+
+      // 第二次选择：判断是否可消除
+      state.steps += 1;
+      var prev = state.selected;
+      var prevEl = boardEl.querySelector('[data-r="' + prev.r + '"][data-c="' + prev.c + '"]');
+
+      if (prev.r === r && prev.c === c) {
+        // 同一点（理论上不会到这里，但稳妥起见）
+        clearSelection();
+        updateStatUI();
+        return;
+      }
+
+      if (prev.id !== id) {
+        // 不同图案：切换选择
+        if (prevEl) {
+          prevEl.classList.remove('is-selected');
+          prevEl.removeAttribute('aria-pressed');
+        }
+        target.classList.add('is-selected');
+        target.setAttribute('aria-pressed', 'true');
+        state.selected = { r: r, c: c, id: id };
+        updateStatUI();
+        return;
+      }
+
+      // 同图案：尝试路径
+      var res = canConnectExtended(prev.r, prev.c, r, c);
+      if (res && res.turns <= 2) {
+        // 成功：消除
+        state.score += 10;
+        // 步数过少额外奖励
+        if (state.steps <= 20) state.score += 5;
+
+        // 绘制路径
+        drawPath(res.path);
+
+        // 触发消除动画
+        state.busy = true;
+        target.classList.add('is-removing');
+        if (prevEl) prevEl.classList.add('is-removing');
+
+        setTimeout(function () {
+          state.grid[prev.r][prev.c] = 0;
+          state.grid[r][c] = 0;
+          state.selected = null;
+          renderBoard();
+          state.busy = false;
+          updateStatUI();
+
+          if (isAllCleared()) {
+            finishGame(true);
+          } else if (!hasAnyMove()) {
+            // 死局：重排剩余方块
+            reshuffleRemaining();
+          }
+        }, 420);
+      } else {
+        // 路径不通：步数 -1 惩罚 + 切换选择
+        state.score = Math.max(0, state.score - 2);
+        if (prevEl) {
+          prevEl.classList.remove('is-selected');
+          prevEl.removeAttribute('aria-pressed');
+        }
+        // 给个短暂错误闪烁
+        target.classList.add('is-wrong');
+        setTimeout(function () {
+          target.classList.remove('is-wrong');
+        }, 220);
+
+        state.selected = { r: r, c: c, id: id };
+        target.classList.add('is-selected');
+        target.setAttribute('aria-pressed', 'true');
+        updateStatUI();
+      }
+    }
+
+    function clearSelection() {
+      if (!state.selected) return;
+      var el = boardEl.querySelector('[data-r="' + state.selected.r + '"][data-c="' + state.selected.c + '"]');
+      if (el) {
+        el.classList.remove('is-selected');
+        el.removeAttribute('aria-pressed');
+      }
+      state.selected = null;
+    }
+
+    function isAllCleared() {
+      for (var r = 0; r < state.rows; r++) {
+        for (var c = 0; c < state.cols; c++) {
+          if (state.grid[r][c] !== 0) return false;
+        }
+      }
+      return true;
+    }
+
+    /** 重排剩余方块（避免死局） */
+    function reshuffleRemaining() {
+      var tiles = [];
+      for (var r = 0; r < state.rows; r++) {
+        for (var c = 0; c < state.cols; c++) {
+          if (state.grid[r][c] !== 0) tiles.push(state.grid[r][c]);
+        }
+      }
+      if (tiles.length < 2) return;
+      var attempts = 0;
+      do {
+        tiles = shuffle(tiles);
+        var idx = 0;
+        for (var r2 = 0; r2 < state.rows; r2++) {
+          for (var c2 = 0; c2 < state.cols; c2++) {
+            if (state.grid[r2][c2] !== 0) {
+              state.grid[r2][c2] = tiles[idx++];
+            }
+          }
+        }
+        attempts++;
+      } while (!hasAnyMove() && attempts < 20);
+      renderBoard();
+    }
+
+    // ==========================================================================
+    // 路径绘制：使用 SVG 覆盖层绘制一条折线
+    // --------------------------------------------------------------------------
+    // SVG 坐标系采用 viewBox=(cols+1)×(rows+1)，使得每个 path 节点的
+    // (r,c) 都对应一个整数坐标 (c+1, r+1)。
+    // 这样虚拟边界点（r=-1 或 r=rows）自然落在 SVG 的最外圈，
+    // 与 board 边缘对齐。
+    // ==========================================================================
+    function drawPath(path) {
+      if (!path || path.length < 2) return;
+      var cols = state.cols;
+      var rows = state.rows;
+
+      var svgNS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + (cols + 1) + ' ' + (rows + 1));
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.setAttribute('class', 'path-svg');
+      svg.setAttribute('aria-hidden', 'true');
+
+      var points = [];
+      for (var i = 0; i < path.length; i++) {
+        points.push((path[i].c + 1) + ',' + (path[i].r + 1));
+      }
+      var polyline = document.createElementNS(svgNS, 'polyline');
+      polyline.setAttribute('points', points.join(' '));
+      polyline.setAttribute('class', 'path-polyline');
+      svg.appendChild(polyline);
+      boardEl.appendChild(svg);
+
+      // 动画结束后移除 SVG（0.6s 淡出）
+      setTimeout(function () {
+        if (svg.parentNode) svg.parentNode.removeChild(svg);
+      }, 700);
+    }
+
+    // ==========================================================================
+    // 提示
+    // ==========================================================================
+    function useHint() {
+      if (state.busy || state.ended || !state.started) return;
+      if (state.hintsLeft <= 0) return;
+      // 清除之前的提示高亮
+      var hinted = boardEl.querySelectorAll('.is-hint');
+      for (var i = 0; i < hinted.length; i++) hinted[i].classList.remove('is-hint');
+
+      var hint = findHintPair();
+      if (!hint) {
+        // 无可消除：重排
+        reshuffleRemaining();
+        return;
+      }
+      state.hintsLeft -= 1;
+      state.score = Math.max(0, state.score - 4);
+      var aEl = boardEl.querySelector('[data-r="' + hint.a.r + '"][data-c="' + hint.a.c + '"]');
+      var bEl = boardEl.querySelector('[data-r="' + hint.b.r + '"][data-c="' + hint.b.c + '"]');
+      if (aEl) aEl.classList.add('is-hint');
+      if (bEl) bEl.classList.add('is-hint');
+      updateStatUI();
+    }
+
+    // ==========================================================================
+    // 计时器
+    // ==========================================================================
+    function startTimer() {
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerId = setInterval(function () {
+        if (state.ended) return;
+        state.timeLeft -= 1;
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          updateStatUI();
+          finishGame(false);
+          return;
+        }
+        updateStatUI();
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    // ==========================================================================
+    // 结束 / 重开
+    // ==========================================================================
+    function finishGame(success) {
+      state.ended = true;
+      stopTimer();
+      clearSelection();
+      updateStatUI();
+
+      var usedTime = state.totalTime - state.timeLeft;
+      var timeBonus = success ? state.timeLeft * 2 : 0;
+      var finalScore = state.score + timeBonus;
+      if (success) state.score = finalScore;
+
+      modalTitleEl.textContent = success ? '通关成功！' : '挑战失败';
+      modalTitleEl.className = 'modal__title ' + (success ? 'modal__title--success' : 'modal__title--fail');
+      modalDescEl.textContent = success
+        ? '你成功消除了全部方块。剩余时间奖励 +' + timeBonus + ' 分。'
+        : '倒计时结束，再接再厉。';
+      modalStatsEl.hidden = false;
+      modalTimeEl.textContent = usedTime + 's';
+      modalStepsEl.textContent = String(state.steps);
+      modalScoreEl.textContent = String(state.score);
+      modalEl.classList.add('is-open');
+    }
+
+    function closeModal() {
+      modalEl.classList.remove('is-open');
+    }
+
+    function startGame() {
+      // 完整重开：重置状态 + 立即开始计时
+      resetGame();
+      beginGame();
+    }
+
+    /** 重置棋盘与状态（但不启动计时器，等待用户点击「开始」） */
+    function resetGame() {
+      stopTimer();
+      closeModal();
+      state.score = 0;
+      state.steps = 0;
+      state.selected = null;
+      state.busy = false;
+      state.ended = false;
+      state.started = false;
+      // 清除可能残留的提示/选择样式
+      var hinted = boardEl.querySelectorAll('.is-hint, .is-selected');
+      for (var i = 0; i < hinted.length; i++) {
+        hinted[i].classList.remove('is-hint');
+        hinted[i].classList.remove('is-selected');
+        hinted[i].removeAttribute('aria-pressed');
+      }
+      generateBoard();
+      renderBoard();
+      updateStatUI();
+    }
+
+    /** 启动计时器与点击交互（不重置棋盘） */
+    function beginGame() {
+      if (state.started || state.ended) return;
+      state.started = true;
+      state.timeLeft = state.totalTime;
+      startTimer();
+      updateStatUI();
+    }
+
+    // ==========================================================================
+    // 事件绑定
+    // ==========================================================================
+    btnStartEl.addEventListener('click', beginGame);
+    btnRestartEl.addEventListener('click', startGame);
+    btnHintEl.addEventListener('click', useHint);
+    modalCloseEl.addEventListener('click', closeModal);
+    modalRestartEl.addEventListener('click', startGame);
+
+    difficultyEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.difficulty__option');
+      if (!btn) return;
+      var diff = btn.getAttribute('data-difficulty');
+      if (!DIFFICULTY[diff] || diff === state.difficulty) return;
+      // 更新 aria-pressed
+      var btns = difficultyEl.querySelectorAll('.difficulty__option');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].setAttribute('aria-pressed', btns[i] === btn ? 'true' : 'false');
+      }
+      state.difficulty = diff;
+      // 切换难度后重置棋盘，让用户重新点开始
+      resetGame();
+    });
+
+    // 键盘快捷键：R=重开 S=开始 H=提示 Esc=关闭弹窗
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'r' || e.key === 'R') startGame();
+      else if (e.key === 's' || e.key === 'S') beginGame();
+      else if (e.key === 'h' || e.key === 'H') useHint();
+      else if (e.key === 'Escape') closeModal();
+    });
+
+    // 启动：先生成棋盘与初始状态，等待用户点「开始」
+    resetGame();
+  })();
+  </script>
+</body>
+</html>
